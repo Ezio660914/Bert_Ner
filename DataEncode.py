@@ -22,6 +22,7 @@ except:
 vocabDir = Path("./downloads/SavedModel/small_bert_bert_en_uncased_L-8_H-512_A-8_2/assets/vocab.txt")
 classNamesDir = Path("./classNames.pkl")
 labelListDir = Path("./labelList.pkl")
+sentenceListDir = Path("./sentenceList.pkl")
 
 
 def TokenizeSentence(sentence: list, tokenizer: tokenization.FullTokenizer):
@@ -31,12 +32,9 @@ def TokenizeSentence(sentence: list, tokenizer: tokenization.FullTokenizer):
     return ids
 
 
-def EncodeLabels():
-    with open(classNamesDir, "rb") as f:
-        classNames: list = pickle.load(f)
-    with open(labelListDir, "rb") as f:
-        labelList: list = pickle.load(f)
+def EncodeLabels(labelList: list, classNames: list, maxLength: int):
     labelsPadded = keras.preprocessing.sequence.pad_sequences(labelList,
+                                                              maxlen=maxLength,
                                                               dtype="float32",
                                                               padding="post",
                                                               value=classNames.index("O"))
@@ -49,7 +47,7 @@ def EncodeLabels():
 def BertEncode(sentences: list, tokenizer: tokenization.FullTokenizer):
     numSentences = len(sentences)
     sentencesTensor = tf.ragged.constant([TokenizeSentence(s, tokenizer) for s in sentences])
-    clsPrefix = [tokenizer.convert_tokens_to_ids("[CLS]")] * numSentences
+    clsPrefix = [tokenizer.convert_tokens_to_ids(["[CLS]"])] * numSentences
     inputWordIds = tf.concat([clsPrefix, sentencesTensor], axis=-1)
     inputMask = tf.ones_like(inputWordIds).to_tensor()
     inputTypeIds = tf.zeros_like(inputWordIds).to_tensor()
