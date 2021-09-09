@@ -49,7 +49,7 @@ class NerModel(keras.Model):
         input1 = keras.layers.Input(shape=(None,), name="input_word_ids", dtype=tf.int32)
         input2 = keras.layers.Input(shape=(None,), name="input_mask", dtype=tf.int32)
         input3 = keras.layers.Input(shape=(None,), name="input_type_ids", dtype=tf.int32)
-        bertModel = hub.KerasLayer(str(bertDir), trainable=False, name="Bert")
+        bertModel = hub.KerasLayer(str(bertDir), trainable=True, name="Bert")
         bertInputArgs = {
             'input_word_ids': input1,
             'input_mask': input2,
@@ -142,8 +142,8 @@ def main():
     model = NerModel()
     model.summary()
     # create an optimizer with learning rate schedule
-    initLearningRate = 1e-5
-    epochs = 2
+    initLearningRate = 1e-6
+    epochs = 5
     batchSize = 32
     trainDataSize = len(trainLabel)
     stepsPerEpoch = int(trainDataSize / batchSize)
