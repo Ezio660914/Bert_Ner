@@ -35,13 +35,10 @@ def TokenizeSentence(sentence: list, tokenizer: tokenization.FullTokenizer):
 def EncodeLabels(labelList: list, classNames: list, maxLength: int):
     labelsPadded = keras.preprocessing.sequence.pad_sequences(labelList,
                                                               maxlen=maxLength,
-                                                              dtype="float32",
+                                                              dtype="int32",
                                                               padding="post",
                                                               value=classNames.index("O"))
-    labelsOneHot = tf.one_hot(indices=labelsPadded,
-                              depth=len(classNames),
-                              axis=-1)
-    return labelsOneHot
+    return labelsPadded
 
 
 def BertEncode(sentences: list, tokenizer: tokenization.FullTokenizer):
