@@ -41,14 +41,18 @@ def EncodeLabels(labelList: list, classNames: list, maxLength: int):
     return labelsPadded
 
 
-def BertEncode(sentences: list, tokenizer: tokenization.FullTokenizer):
+def BertEncode(sentences: list, tokenizer: tokenization.FullTokenizer, maxLength: int):
     numSentences = len(sentences)
     sentencesTensor = tf.ragged.constant([TokenizeSentence(s, tokenizer) for s in sentences])
     clsPrefix = [tokenizer.convert_tokens_to_ids(["[CLS]"])] * numSentences
     inputWordIds = tf.concat([clsPrefix, sentencesTensor], axis=-1)
-    inputMask = tf.ones_like(inputWordIds).to_tensor()
-    inputTypeIds = tf.zeros_like(inputWordIds).to_tensor()
-    encoded = dict(input_word_ids=inputWordIds.to_tensor(),
+    # check if parameter maxLength is greater than the max length of sentences
+    maxSentenceLength = tf.reduce_max(inputWordIds.row_lengths()).numpy()
+    print(f"Max Sentence Length: {maxSentenceLength}\n")
+    assert maxLength >= maxSentenceLength
+    inputMask = tf.ones_like(inputWordIds).to_tensor(shape=(None, maxLength))
+    inputTypeIds = tf.zeros_like(inputWordIds).to_tensor(shape=(None, maxLength))
+    encoded = dict(input_word_ids=inputWordIds.to_tensor(shape=(None, maxLength)),
                    input_mask=inputMask,
                    input_type_ids=inputTypeIds)
     return encoded

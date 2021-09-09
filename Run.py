@@ -16,6 +16,8 @@ import pickle
 from pathlib import Path
 from official.nlp.bert import tokenization
 from official.nlp.optimization import create_optimizer
+import numpy as np
+import pandas as pd
 
 """include project files"""
 from DataPreprocess import *
@@ -30,6 +32,11 @@ except:
 
 bertDir = Path("./downloads/SavedModel/small_bert_bert_en_uncased_L-8_H-512_A-8_2")
 classNames: list = GetClassNames(dataDir / rawTrainFile)
+checkPointDir = Path("./saved/NerModelWeights")
+
+train = False
+fineTuneBert = True
+maxSeqLength = 170
 
 
 class NerModel(keras.Model):
@@ -49,7 +56,7 @@ class NerModel(keras.Model):
         input1 = keras.layers.Input(shape=(None,), name="input_word_ids", dtype=tf.int32)
         input2 = keras.layers.Input(shape=(None,), name="input_mask", dtype=tf.int32)
         input3 = keras.layers.Input(shape=(None,), name="input_type_ids", dtype=tf.int32)
-        bertModel = hub.KerasLayer(str(bertDir), trainable=True, name="Bert")
+        bertModel = hub.KerasLayer(str(bertDir), trainable=fineTuneBert, name="bert")
         bertInputArgs = {
             'input_word_ids': input1,
             'input_mask': input2,
@@ -122,16 +129,30 @@ class NerModel(keras.Model):
     def test_step(self, data):
         x, y, sample_weight = self.unpack_data(data)
         crf_loss, accuracy = self.compute_loss(x, y, sample_weight)
-        return {"val_crf_loss": crf_loss, "val_accuracy": accuracy}
+        return {"crf_loss": crf_loss, "accuracy": accuracy}
 
 
 def LoadData(fileDir):
     sentenceList, labelList = PreProcessFile(fileDir)
     tokenizer = tokenization.FullTokenizer(vocab_file=vocabDir)
-    data = BertEncode(sentenceList, tokenizer)
-    maxLength = data["input_word_ids"].shape[1]
-    label = EncodeLabels(labelList, classNames, maxLength)
+    data = BertEncode(sentenceList, tokenizer, maxSeqLength)
+    label = EncodeLabels(labelList, classNames, maxSeqLength)
     return data, label
+
+
+def MakePrediction(model: keras.Model, sentenceList: list):
+    tokenizer = tokenization.FullTokenizer(vocab_file=vocabDir)
+    sentencesLength = tf.ragged.constant([TokenizeSentence(s, tokenizer) for s in sentenceList]).row_lengths()
+    # exclude the last [SEP] token
+    sentencesLength = sentencesLength - 1
+    data = BertEncode(sentenceList, tokenizer, maxSeqLength)
+    classNamesArray = np.array(classNames)
+    labelIdPred = model.predict(data)
+    labelPred = classNamesArray[labelIdPred]
+    labelPred = tf.RaggedTensor.from_tensor(tensor=labelPred,
+                                            lengths=sentencesLength)
+    labelPred = labelPred.to_list()
+    return labelPred
 
 
 def main():
@@ -139,29 +160,46 @@ def main():
     valData, valLabel = LoadData(dataDir / rawValFile)
     testData, testLabel = LoadData(dataDir / rawTestFile)
     print("finished loading data\n")
+    print(len(trainLabel), len(valLabel), len(testLabel))
+
     model = NerModel()
     model.summary()
     # create an optimizer with learning rate schedule
-    initLearningRate = 1e-6
-    epochs = 5
+    initLearningRate = 1e-5
+    epochs = 2
     batchSize = 32
     trainDataSize = len(trainLabel)
     stepsPerEpoch = int(trainDataSize / batchSize)
     numTrainSteps = stepsPerEpoch * epochs
     warmupSteps = int(numTrainSteps * 0.1)
-    optimizer = create_optimizer(
-        init_lr=initLearningRate,
-        num_train_steps=numTrainSteps,
-        num_warmup_steps=warmupSteps,
-        optimizer_type="adamw")
+    optimizer = create_optimizer(init_lr=initLearningRate,
+                                 num_train_steps=numTrainSteps,
+                                 num_warmup_steps=warmupSteps,
+                                 optimizer_type="adamw")
     model.compile(optimizer)
-    history = model.fit(trainData,
-                        trainLabel,
-                        batch_size=batchSize,
-                        epochs=epochs,
-                        validation_data=(valData, valLabel))
-    model.evaluate(testData, testLabel)
+    ckptCallback = keras.callbacks.ModelCheckpoint(filepath=str(checkPointDir),
+                                                   monitor="val_crf_loss",
+                                                   verbose=1,
+                                                   save_best_only=True,
+                                                   save_weights_only=True)
+    if train:
+        history = model.fit(trainData,
+                            trainLabel,
+                            batch_size=batchSize,
+                            epochs=epochs,
+                            validation_data=(valData, valLabel),
+                            callbacks=[ckptCallback])
+    model.load_weights(str(checkPointDir))
+    # model.evaluate(testData, testLabel)
+    testText = [
+        "Mr. Egeland said the latest figures show 1.8 million people are in need of food assistance - with the need greatest in Indonesia , Sri Lanka , the Maldives and India .",
+        "Prime Minister Geir Haarde has refused to resign or call for early elections .",
+        "The British man blames Iceland 's economic calamity on commercial bankers .",
 
+    ]
+    labelPred = MakePrediction(model, testText)
+
+    print(labelPred)
     exit(0)
 
 
