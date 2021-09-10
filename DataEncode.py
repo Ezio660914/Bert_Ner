@@ -19,11 +19,6 @@ try:
 except:
     print("GPU error")
 
-vocabDir = Path("./downloads/SavedModel/small_bert_bert_en_uncased_L-8_H-512_A-8_2/assets/vocab.txt")
-classNamesDir = Path("./classNames.pkl")
-labelListDir = Path("./labelList.pkl")
-sentenceListDir = Path("./sentenceList.pkl")
-
 
 def TokenizeSentence(sentence: list, tokenizer: tokenization.FullTokenizer):
     tokens = list(tokenizer.tokenize(sentence))

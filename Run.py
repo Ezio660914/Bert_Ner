@@ -6,8 +6,6 @@
 @file: Run.py
 @time: 2021-09-07 23:55
 """
-from abc import ABC
-
 import tensorflow as tf
 import tensorflow.keras as keras
 import tensorflow_addons as tfa
@@ -31,7 +29,9 @@ except:
     print("GPU error")
 
 bertDir = Path("./downloads/SavedModel/small_bert_bert_en_uncased_L-8_H-512_A-8_2")
-classNames: list = GetClassNames(dataDir / rawTrainFile)
+vocabDir = Path("./downloads/SavedModel/small_bert_bert_en_uncased_L-8_H-512_A-8_2/assets/vocab.txt")
+preProcessor = PreProcessCoNLL()
+classNames: list = preProcessor.GetLabelClasses()
 checkPointDir = Path("./saved/NerModelWeights")
 
 train = False
@@ -133,7 +133,7 @@ class NerModel(keras.Model):
 
 
 def LoadData(fileDir):
-    sentenceList, labelList = PreProcessFile(fileDir)
+    sentenceList, labelList = preProcessor.PreProcessFile(fileDir)
     tokenizer = tokenization.FullTokenizer(vocab_file=vocabDir)
     data = BertEncode(sentenceList, tokenizer, maxSeqLength)
     label = EncodeLabels(labelList, classNames, maxSeqLength)
@@ -156,16 +156,16 @@ def MakePrediction(model: keras.Model, sentenceList: list):
 
 
 def main():
-    trainData, trainLabel = LoadData(dataDir / rawTrainFile)
-    valData, valLabel = LoadData(dataDir / rawValFile)
-    testData, testLabel = LoadData(dataDir / rawTestFile)
+    trainData, trainLabel = LoadData(preProcessor.dataDir / preProcessor.rawTrainFile)
+    valData, valLabel = LoadData(preProcessor.dataDir / preProcessor.rawValFile)
+    testData, testLabel = LoadData(preProcessor.dataDir / preProcessor.rawTestFile)
     print("finished loading data\n")
     print(len(trainLabel), len(valLabel), len(testLabel))
 
     model = NerModel()
     model.summary()
     # create an optimizer with learning rate schedule
-    initLearningRate = 1e-5
+    initLearningRate = 1e-6
     epochs = 2
     batchSize = 32
     trainDataSize = len(trainLabel)
@@ -190,7 +190,7 @@ def main():
                             validation_data=(valData, valLabel),
                             callbacks=[ckptCallback])
     model.load_weights(str(checkPointDir))
-    # model.evaluate(testData, testLabel)
+    model.evaluate(testData, testLabel)
     testText = [
         "Mr. Egeland said the latest figures show 1.8 million people are in need of food assistance - with the need greatest in Indonesia , Sri Lanka , the Maldives and India .",
         "Prime Minister Geir Haarde has refused to resign or call for early elections .",
