@@ -8,8 +8,6 @@
 """
 import tensorflow as tf
 import tensorflow.keras as keras
-import pickle
-from pathlib import Path
 from official.nlp.bert import tokenization
 
 tf.get_logger().setLevel("ERROR")

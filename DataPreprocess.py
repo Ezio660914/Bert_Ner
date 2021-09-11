@@ -9,8 +9,6 @@
 """
 This file is used for preprocessing the CoNLL dataset 
 """
-import abc
-
 from pathlib import Path
 import pickle
 

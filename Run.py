@@ -38,7 +38,7 @@ classNames = preProcessor.GetLabelClasses()
 
 checkPointDir = Path("./saved/NerModelWeights")
 
-train = True
+train = False
 fineTuneBert = True
 maxSeqLength = 170
 
@@ -165,11 +165,11 @@ def main():
     testData, testLabel = LoadData(preProcessor.dataDir / preProcessor.rawTestFile)
     print("finished loading data\n")
     print(len(trainLabel), len(valLabel), len(testLabel))
-
+    tf.random.set_seed(2021)
     model = NerModel()
     model.summary()
     # create an optimizer with learning rate schedule
-    initLearningRate = 1e-6
+    initLearningRate = 1e-5
     epochs = 2
     batchSize = 16
     trainDataSize = len(trainLabel)
