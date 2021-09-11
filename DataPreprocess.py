@@ -103,7 +103,10 @@ class PreProcessGSDSimp(PreProcessBase):
                     for i in range(len(token["form"])):
                         if token["upos"] not in self.includedClass:
                             label.append(classesNames.index("O"))
-                            continue
+                            if token["upos"] == "NUM":
+                                break
+                            else:
+                                continue
                         if isFirst:
                             label.append(classesNames.index("B-" + token["upos"]))
                             isFirst = False
@@ -131,8 +134,8 @@ def main():
     sentenceList, labelList = preProcessor.PreProcessFile(fileDir)
     classNames = preProcessor.GetLabelClasses()
     print(classNames)
-    print(sentenceList[:3])
-    print(labelList[:3])
+    print(sentenceList[:5])
+    print(labelList[:5])
     with open(sentenceListDir, "wb") as f:
         pickle.dump(sentenceList, f)
     with open(labelListDir, "wb") as f:

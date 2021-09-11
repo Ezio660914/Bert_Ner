@@ -69,6 +69,10 @@ class NerModel(keras.Model):
                                                              return_sequences=True))(x)
         x_rnn = keras.layers.Dropout(0.2)(x_rnn)
         x = keras.layers.add([x, x_rnn])
+        x_rnn = keras.layers.Bidirectional(keras.layers.LSTM(384,
+                                                             return_sequences=True))(x)
+        x_rnn = keras.layers.Dropout(0.2)(x_rnn)
+        x = keras.layers.add([x, x_rnn])
         x = keras.layers.TimeDistributed(keras.layers.Dense(len(classNames)))(x)
         crfOutput = tfa.layers.crf.CRF(len(classNames))(x)
         baseModel = keras.Model(inputs=[input1, input2, input3], outputs=crfOutput)
@@ -162,13 +166,13 @@ def main():
     testData, testLabel = LoadData(preProcessor.dataDir / preProcessor.rawTestFile)
     print("finished loading data\n")
     print(len(trainLabel), len(valLabel), len(testLabel))
-    tf.random.set_seed(2021)
+    # tf.random.set_seed(2021)
     model = NerModel()
     model.summary()
     # create an optimizer with learning rate schedule
     initLearningRate = 1e-5
     epochs = 3
-    batchSize = 32
+    batchSize = 16
     trainDataSize = len(trainLabel)
     stepsPerEpoch = int(trainDataSize / batchSize)
     numTrainSteps = stepsPerEpoch * epochs
