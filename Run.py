@@ -27,20 +27,17 @@ try:
     tf.config.experimental.set_memory_growth(gpus[0], True)
 except:
     print("GPU error")
-dataDir = Path("./downloads/Resource/CoNLL")
-rawTrainFile = "conllpp_train.txt"
-rawValFile = "conllpp_dev.txt"
-rawTestFile = "conllpp_test.txt"
-bertDir = Path("./downloads/SavedModel/small_bert_bert_en_uncased_L-8_H-512_A-8_2")
-vocabDir = Path("./downloads/SavedModel/small_bert_bert_en_uncased_L-8_H-512_A-8_2/assets/vocab.txt")
-preProcessor = PreProcessCoNLL()
-classNames = preProcessor.GetLabelClasses()
 
+bertDir = Path("./downloads/SavedModel/bert_zh_L-12_H-768_A-12_4")
+vocabDir = Path("./downloads/SavedModel/bert_zh_L-12_H-768_A-12_4/assets/vocab.txt")
+preProcessor = PreProcessGSDSimp()
+classNames = preProcessor.GetLabelClasses()
+print(classNames)
 checkPointDir = Path("./saved/NerModelWeights")
 
-train = False
-fineTuneBert = True
-maxSeqLength = 170
+train = True
+fineTuneBert = False
+maxSeqLength = 180
 
 
 class NerModel(keras.Model):
@@ -68,7 +65,7 @@ class NerModel(keras.Model):
         }
         bertOutput = bertModel(bertInputArgs, training=False)
         x = bertOutput["sequence_output"]
-        x_rnn = keras.layers.Bidirectional(keras.layers.LSTM(256,
+        x_rnn = keras.layers.Bidirectional(keras.layers.LSTM(384,
                                                              return_sequences=True))(x)
         x_rnn = keras.layers.Dropout(0.2)(x_rnn)
         x = keras.layers.add([x, x_rnn])
@@ -140,7 +137,7 @@ def LoadData(fileDir):
     sentenceList, labelList = preProcessor.PreProcessFile(fileDir)
     tokenizer = tokenization.FullTokenizer(vocab_file=vocabDir)
     data = BertEncode(sentenceList, tokenizer, maxSeqLength)
-    label = EncodeLabels(labelList, classNames, maxSeqLength)
+    label = EncodeLabels(labelList, classNames, maxSeqLength, "O")
     return data, label
 
 
@@ -170,8 +167,8 @@ def main():
     model.summary()
     # create an optimizer with learning rate schedule
     initLearningRate = 1e-5
-    epochs = 2
-    batchSize = 16
+    epochs = 3
+    batchSize = 32
     trainDataSize = len(trainLabel)
     stepsPerEpoch = int(trainDataSize / batchSize)
     numTrainSteps = stepsPerEpoch * epochs
@@ -195,15 +192,23 @@ def main():
                             callbacks=[ckptCallback])
     model.load_weights(str(checkPointDir))
     model.evaluate(testData, testLabel)
+    # testText = [
+    #     "Mr. Egeland said the latest figures show 1.8 million people are in need of food assistance - with the need greatest in Indonesia , Sri Lanka , the Maldives and India .",
+    #     "Prime Minister Geir Haarde has refused to resign or call for early elections .",
+    #     "The British man blames Iceland 's economic calamity on commercial bankers .",
+    # ]
     testText = [
-        "Mr. Egeland said the latest figures show 1.8 million people are in need of food assistance - with the need greatest in Indonesia , Sri Lanka , the Maldives and India .",
-        "Prime Minister Geir Haarde has refused to resign or call for early elections .",
-        "The British man blames Iceland 's economic calamity on commercial bankers .",
-
+        "自从2004年提出了兴建人文大楼的构想，企业界陆续有人提供捐款。",
+        "楼顶有天文台，现为天文社使用。",
+        "同年9月7日，亚奥理事会主席萨巴赫亲王为国际射击中心主持铜像揭幕仪式。",
+        "怀孕期为421至457日。"
     ]
+    tokenizer = tokenization.FullTokenizer(vocab_file=vocabDir)
+    tokens = [tokenizer.tokenize(t) for t in testText]
     labelPred = MakePrediction(model, testText)
-
-    print(labelPred)
+    for i, labels in enumerate(labelPred):
+        print(tokenizer.tokenize(testText[i]))
+        print(labels)
     exit(0)
 
 

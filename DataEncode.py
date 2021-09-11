@@ -25,12 +25,12 @@ def TokenizeSentence(sentence: list, tokenizer: tokenization.FullTokenizer):
     return ids
 
 
-def EncodeLabels(labelList: list, classNames: list, maxLength: int):
+def EncodeLabels(labelList: list, classNames: list, maxLength: int, padValue: str):
     labelsPadded = keras.preprocessing.sequence.pad_sequences(labelList,
                                                               maxlen=maxLength,
                                                               dtype="int32",
                                                               padding="post",
-                                                              value=classNames.index("O"))
+                                                              value=classNames.index(padValue))
     return labelsPadded
 
 

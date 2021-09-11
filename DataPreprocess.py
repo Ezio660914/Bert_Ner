@@ -11,6 +11,8 @@ This file is used for preprocessing the CoNLL dataset
 """
 from pathlib import Path
 import pickle
+import xml.etree.ElementTree as ET
+import conllu
 
 
 class PreProcessBase:
@@ -62,17 +64,68 @@ class PreProcessCoNLL(PreProcessBase):
         return sentenceList, labelList
 
 
+class PreProcessGSDSimp(PreProcessBase):
+    def __init__(self):
+        self.dataDir = Path("./downloads/Resource/UD_Chinese-GSDSimp-master")
+        self.rawTrainFile = "zh_gsdsimp-ud-train.conllu"
+        self.rawValFile = "zh_gsdsimp-ud-dev.conllu"
+        self.rawTestFile = "zh_gsdsimp-ud-test.conllu"
+        self.includedClass = ["ADJ", "NOUN", "VERB"]
+
+    def GetLabelClasses(self):
+        statsDir = "downloads/Resource/UD_Chinese-GSDSimp-master/stats.xml"
+        tree = ET.ElementTree(file=statsDir)
+        classesNames = [child.attrib["name"] for child in list(list(tree.getroot())[4])]
+        # BIO encode class names
+        classesNames_BIO = set()
+        for cls in classesNames:
+            if cls not in self.includedClass:
+                classesNames_BIO.add("O")
+            else:
+                classesNames_BIO.add("B-" + cls)
+                classesNames_BIO.add("I-" + cls)
+        classesNames_BIO = list(classesNames_BIO)
+        classesNames_BIO.sort()
+        return classesNames_BIO
+
+    def PreProcessFile(self, fileDir):
+        classesNames = self.GetLabelClasses()
+        sentenceList = []
+        labelList = []
+        with open(fileDir, "r", encoding="utf8") as file:
+            sentences = conllu.parse_incr(file)
+            for s in sentences:
+                sentenceStr = s.metadata["text"]
+                sentenceList.append(sentenceStr)
+                label = []
+                for token in s:
+                    isFirst = True
+                    for i in range(len(token["form"])):
+                        if token["upos"] not in self.includedClass:
+                            label.append(classesNames.index("O"))
+                            continue
+                        if isFirst:
+                            label.append(classesNames.index("B-" + token["upos"]))
+                            isFirst = False
+                        else:
+                            label.append(classesNames.index("I-" + token["upos"]))
+                        if token["upos"] == "NUM":
+                            break
+                labelList.append(label)
+        return sentenceList, labelList
+
+
 def main():
-    dataDir = Path("./downloads/Resource/CoNLL")
-    rawTrainFile = "conllpp_train.txt"
-    rawValFile = "conllpp_dev.txt"
-    rawTestFile = "conllpp_test.txt"
+    dataDir = Path("./downloads/Resource/UD_Chinese-GSDSimp-master")
+    rawTrainFile = "zh_gsdsimp-ud-train.conllu"
+    rawValFile = "zh_gsdsimp-ud-dev.conllu"
+    rawTestFile = "zh_gsdsimp-ud-test.conllu"
 
     classNamesDir = Path("./classNames.pkl")
     labelListDir = Path("./labelList.pkl")
     sentenceListDir = Path("./sentenceList.pkl")
 
-    preProcessor = PreProcessCoNLL()
+    preProcessor = PreProcessGSDSimp()
 
     fileDir = dataDir / rawTrainFile
     sentenceList, labelList = preProcessor.PreProcessFile(fileDir)
