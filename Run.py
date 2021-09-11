@@ -27,14 +27,18 @@ try:
     tf.config.experimental.set_memory_growth(gpus[0], True)
 except:
     print("GPU error")
-
+dataDir = Path("./downloads/Resource/CoNLL")
+rawTrainFile = "conllpp_train.txt"
+rawValFile = "conllpp_dev.txt"
+rawTestFile = "conllpp_test.txt"
 bertDir = Path("./downloads/SavedModel/small_bert_bert_en_uncased_L-8_H-512_A-8_2")
 vocabDir = Path("./downloads/SavedModel/small_bert_bert_en_uncased_L-8_H-512_A-8_2/assets/vocab.txt")
 preProcessor = PreProcessCoNLL()
-classNames: list = preProcessor.GetLabelClasses()
+classNames = preProcessor.GetLabelClasses()
+
 checkPointDir = Path("./saved/NerModelWeights")
 
-train = False
+train = True
 fineTuneBert = True
 maxSeqLength = 170
 
@@ -167,7 +171,7 @@ def main():
     # create an optimizer with learning rate schedule
     initLearningRate = 1e-6
     epochs = 2
-    batchSize = 32
+    batchSize = 16
     trainDataSize = len(trainLabel)
     stepsPerEpoch = int(trainDataSize / batchSize)
     numTrainSteps = stepsPerEpoch * epochs

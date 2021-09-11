@@ -69,11 +69,13 @@ def main():
     rawTrainFile = "conllpp_train.txt"
     rawValFile = "conllpp_dev.txt"
     rawTestFile = "conllpp_test.txt"
+
     classNamesDir = Path("./classNames.pkl")
     labelListDir = Path("./labelList.pkl")
     sentenceListDir = Path("./sentenceList.pkl")
 
     preProcessor = PreProcessCoNLL()
+
     fileDir = dataDir / rawTrainFile
     sentenceList, labelList = preProcessor.PreProcessFile(fileDir)
     classNames = preProcessor.GetLabelClasses()
